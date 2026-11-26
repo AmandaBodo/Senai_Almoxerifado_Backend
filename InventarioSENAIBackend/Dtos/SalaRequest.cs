@@ -1,4 +1,3 @@
-
 namespace InventarioSENAIBackend.Dtos
 {
     public class SalaRequest

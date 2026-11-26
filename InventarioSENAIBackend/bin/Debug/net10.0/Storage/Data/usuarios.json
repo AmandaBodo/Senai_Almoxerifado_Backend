@@ -1,1 +1,11 @@
-[]
+[
+  {
+    "IdUsuario": 1,
+    "Nome": "Cau\u00E3",
+    "Matricula": "1130",
+    "Email": "Caua@Senai.com",
+    "SenhaHash": "$2a$11$KE0M75TFwU2lrfPclCi7b.BMWNXHOqvX5k8qG/jAr5zGqwXth9yHO",
+    "Perfil": "Aluno",
+    "Status": "Ativo"
+  }
+]

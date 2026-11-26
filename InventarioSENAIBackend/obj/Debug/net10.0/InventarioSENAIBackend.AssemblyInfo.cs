@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("InventarioSENAIBackend")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+86ec4c1237cbc52c3e70dccf35372d9da98d0246")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cb4e85c68cfdfb22b56c410bbcb5403f38fd4384")]
 [assembly: System.Reflection.AssemblyProductAttribute("InventarioSENAIBackend")]
 [assembly: System.Reflection.AssemblyTitleAttribute("InventarioSENAIBackend")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

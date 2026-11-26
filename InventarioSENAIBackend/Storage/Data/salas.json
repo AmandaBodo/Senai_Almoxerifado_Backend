@@ -1,1 +1,10 @@
-[]
+[
+  {
+    "IdSala": 1,
+    "NomeSala": "DS",
+    "CodigoSala": "002",
+    "Descricao": "Desenvolvimento de sistemas",
+    "Localizacao": "A4",
+    "Status": "Ativa"
+  }
+]

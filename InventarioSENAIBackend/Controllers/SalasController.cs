@@ -1,7 +1,7 @@
-
 using Microsoft.AspNetCore.Mvc;
 using InventarioSENAIBackend.Models;
 using InventarioSENAIBackend.Repository;
+using InventarioSENAIBackend.Dtos;
 
 namespace InventarioSENAIBackend.Controllers
 {
@@ -16,6 +16,7 @@ namespace InventarioSENAIBackend.Controllers
             _repository = repository;
         }
 
+        // GET: api/Salas
         [HttpGet]
         public async Task<IActionResult> GetSalas()
         {
@@ -24,6 +25,7 @@ namespace InventarioSENAIBackend.Controllers
             return Ok(salas);
         }
 
+        // GET: api/Salas/1
         [HttpGet("{id}")]
         public async Task<IActionResult> GetSala(int id)
         {
@@ -35,10 +37,18 @@ namespace InventarioSENAIBackend.Controllers
             return Ok(sala);
         }
 
+        // POST: api/Salas
         [HttpPost]
-        public async Task<IActionResult> PostSala(Sala sala)
+        public async Task<IActionResult> PostSala(SalaRequest dados)
         {
-            sala.IdSala = 0;
+            var sala = new Sala
+            {
+                NomeSala = dados.NomeSala,
+                CodigoSala = dados.CodigoSala,
+                Descricao = dados.Descricao,
+                Localizacao = dados.Localizacao,
+                Status = dados.Status
+            };
 
             var novaSala = await _repository.AdicionarAsync(sala);
 
@@ -49,8 +59,11 @@ namespace InventarioSENAIBackend.Controllers
             );
         }
 
+        // PUT: api/Salas/1
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutSala(int id, Sala dados)
+        public async Task<IActionResult> PutSala(
+            int id,
+            SalaRequest dados)
         {
             var sala = await _repository.ObterPorIdAsync(id);
 
@@ -63,7 +76,10 @@ namespace InventarioSENAIBackend.Controllers
             sala.Localizacao = dados.Localizacao;
             sala.Status = dados.Status;
 
-            await _repository.AtualizarAsync(sala);
+            bool atualizado = await _repository.AtualizarAsync(sala);
+
+            if (!atualizado)
+                return NotFound("Não foi possível atualizar a sala.");
 
             return NoContent();
         }
