@@ -3,9 +3,18 @@
     "IdUsuario": 1,
     "Nome": "Cau\u00E3",
     "Matricula": "1130",
-    "Email": "Caua@Senai.com",
-    "SenhaHash": "$2a$11$KE0M75TFwU2lrfPclCi7b.BMWNXHOqvX5k8qG/jAr5zGqwXth9yHO",
+    "Email": "Caua@gmail.com",
+    "SenhaHash": "$2a$11$4cb/bqDpv1fTBgEqRF2hcuh0yI2l45/jMRhDAEG7wvwXE9ysqSony",
     "Perfil": "Aluno",
     "Status": "Ativo"
+  },
+  {
+    "IdUsuario": 2,
+    "Nome": "Amanda",
+    "Matricula": "1140",
+    "Email": "Amanda@gmail.com",
+    "SenhaHash": "$2a$11$88VukS8TnpcT8oeNkqoqn.L1rKjJUTEnNZ/6uPptTm6r8nuY/PD4G",
+    "Perfil": "Aluno",
+    "Status": "Inativo"
   }
 ]

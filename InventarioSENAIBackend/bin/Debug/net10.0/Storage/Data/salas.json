@@ -6,5 +6,13 @@
     "Descricao": "Desenvolvimento de sistemas",
     "Localizacao": "A4",
     "Status": "Ativa"
+  },
+  {
+    "IdSala": 2,
+    "NomeSala": "DS",
+    "CodigoSala": "001",
+    "Descricao": "Sala de desenvolvimento de sistemas",
+    "Localizacao": "A4",
+    "Status": "Ativa"
   }
 ]

@@ -1,7 +1,5 @@
-
 using Microsoft.AspNetCore.Mvc;
 using InventarioSENAIBackend.Models;
-using InventarioSENAIBackend.Dtos;
 using InventarioSENAIBackend.Repository;
 
 namespace InventarioSENAIBackend.Controllers
@@ -30,61 +28,84 @@ namespace InventarioSENAIBackend.Controllers
             _salaRepository = salaRepository;
         }
 
-        [HttpGet]
-        public async Task<IActionResult> GetMovimentacoes()
+        private async Task<List<object>> MontarResultadoAsync(
+            IEnumerable<Movimentacao> movimentacoes)
         {
-            var movimentacoes =
-                await _movimentacaoRepository.ObterTodasAsync();
-
             var produtos = await _produtoRepository.ObterTodosAsync();
             var usuarios = await _usuarioRepository.ObterTodosAsync();
             var emprestimos = await _emprestimoRepository.ObterTodosAsync();
             var salas = await _salaRepository.ObterTodasAsync();
 
-            var resultado = movimentacoes
-                .OrderByDescending(m => m.DataMovimentacao)
-                .Select(m => new
+            var resultado = new List<object>();
+
+            foreach (var m in movimentacoes.OrderByDescending(
+                m => m.DataMovimentacao))
+            {
+                var usuario = usuarios.FirstOrDefault(
+                    u => u.IdUsuario == m.IdUsuario
+                );
+
+                resultado.Add(new
                 {
                     m.IdMovimentacao,
                     m.IdProduto,
                     Produto = produtos.FirstOrDefault(
                         p => p.IdProduto == m.IdProduto
                     ),
+
                     m.IdUsuario,
-                    Usuario = usuarios
-                        .Where(u => u.IdUsuario == m.IdUsuario)
-                        .Select(u => new
-                        {
-                            u.IdUsuario,
-                            u.Nome,
-                            u.Matricula,
-                            u.Email,
-                            u.Perfil,
-                            u.Status
-                        })
-                        .FirstOrDefault(),
+                    Usuario = usuario == null ? null : new
+                    {
+                        usuario.IdUsuario,
+                        usuario.Nome,
+                        usuario.Matricula,
+                        usuario.Perfil,
+                        usuario.Status
+                    },
+
                     m.IdEmprestimo,
-                    Emprestimo = emprestimos.FirstOrDefault(
-                        e => e.IdEmprestimo == m.IdEmprestimo
-                    ),
+                    Emprestimo = m.IdEmprestimo.HasValue
+                        ? emprestimos.FirstOrDefault(
+                            e => e.IdEmprestimo == m.IdEmprestimo.Value
+                        )
+                        : null,
+
                     m.IdSalaOrigem,
-                    SalaOrigem = salas.FirstOrDefault(
-                        s => s.IdSala == m.IdSalaOrigem
-                    ),
+                    SalaOrigem = m.IdSalaOrigem.HasValue
+                        ? salas.FirstOrDefault(
+                            s => s.IdSala == m.IdSalaOrigem.Value
+                        )
+                        : null,
+
                     m.IdSalaDestino,
-                    SalaDestino = salas.FirstOrDefault(
-                        s => s.IdSala == m.IdSalaDestino
-                    ),
+                    SalaDestino = m.IdSalaDestino.HasValue
+                        ? salas.FirstOrDefault(
+                            s => s.IdSala == m.IdSalaDestino.Value
+                        )
+                        : null,
+
                     m.TipoMovimentacao,
                     m.Quantidade,
                     m.DataMovimentacao,
                     m.Descricao
                 });
+            }
+
+            return resultado;
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetMovimentacoes()
+        {
+            var movimentacoes =
+                await _movimentacaoRepository.ObterTodasAsync();
+
+            var resultado = await MontarResultadoAsync(movimentacoes);
 
             return Ok(resultado);
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("{id:int}")]
         public async Task<IActionResult> GetMovimentacao(int id)
         {
             var movimentacao =
@@ -96,176 +117,68 @@ namespace InventarioSENAIBackend.Controllers
                     mensagem = "Movimentação não encontrada."
                 });
 
-            var produto = await _produtoRepository.ObterPorIdAsync(
-                movimentacao.IdProduto
+            var resultado = await MontarResultadoAsync(
+                new List<Movimentacao> { movimentacao }
             );
 
-            var usuario = await _usuarioRepository.ObterPorIdAsync(
-                movimentacao.IdUsuario
-            );
-
-            var emprestimo = movimentacao.IdEmprestimo.HasValue
-                ? await _emprestimoRepository.ObterPorIdAsync(
-                    movimentacao.IdEmprestimo.Value)
-                : null;
-
-            var salaOrigem = movimentacao.IdSalaOrigem.HasValue
-                ? await _salaRepository.ObterPorIdAsync(
-                    movimentacao.IdSalaOrigem.Value)
-                : null;
-
-            var salaDestino = movimentacao.IdSalaDestino.HasValue
-                ? await _salaRepository.ObterPorIdAsync(
-                    movimentacao.IdSalaDestino.Value)
-                : null;
-
-            return Ok(new
-            {
-                movimentacao.IdMovimentacao,
-                movimentacao.IdProduto,
-                Produto = produto,
-                movimentacao.IdUsuario,
-                Usuario = usuario == null ? null : new
-                {
-                    usuario.IdUsuario,
-                    usuario.Nome,
-                    usuario.Matricula,
-                    usuario.Perfil,
-                    usuario.Status
-                },
-                movimentacao.IdEmprestimo,
-                Emprestimo = emprestimo,
-                movimentacao.IdSalaOrigem,
-                SalaOrigem = salaOrigem,
-                movimentacao.IdSalaDestino,
-                SalaDestino = salaDestino,
-                movimentacao.TipoMovimentacao,
-                movimentacao.Quantidade,
-                movimentacao.DataMovimentacao,
-                movimentacao.Descricao
-            });
+            return Ok(resultado.First());
         }
 
-        [HttpPost]
-        public async Task<IActionResult> CriarMovimentacao(
-            MovimentacaoRequest request)
+        [HttpGet("produto/{id:int}")]
+        public async Task<IActionResult> GetPorProduto(int id)
         {
-            var tiposValidos = new[]
-            {
-                "Entrada",
-                "Saida",
-                "Emprestimo",
-                "Devolucao",
-                "Transferencia",
-                "Ajuste",
-                "Manutencao"
-            };
-
-            if (!tiposValidos.Contains(request.TipoMovimentacao))
-                return BadRequest(new
-                {
-                    mensagem = "Tipo de movimentação inválido."
-                });
-
-            if (request.Quantidade <= 0)
-                return BadRequest(new
-                {
-                    mensagem = "A quantidade deve ser maior que zero."
-                });
-
-            var produto = await _produtoRepository.ObterPorIdAsync(
-                request.IdProduto
-            );
+            var produto = await _produtoRepository.ObterPorIdAsync(id);
 
             if (produto == null)
-                return BadRequest(new
+                return NotFound(new
                 {
                     mensagem = "Produto não encontrado."
                 });
 
-            var usuario = await _usuarioRepository.ObterPorIdAsync(
-                request.IdUsuario
-            );
+            var movimentacoes =
+                await _movimentacaoRepository.ObterPorProdutoAsync(id);
 
-            if (usuario == null || usuario.Status != "Ativo")
-                return BadRequest(new
+            var resultado = await MontarResultadoAsync(movimentacoes);
+
+            return Ok(resultado);
+        }
+
+        [HttpGet("sala/{id:int}")]
+        public async Task<IActionResult> GetPorSala(int id)
+        {
+            var sala = await _salaRepository.ObterPorIdAsync(id);
+
+            if (sala == null)
+                return NotFound(new
                 {
-                    mensagem = "Usuário não encontrado ou inativo."
+                    mensagem = "Sala não encontrada."
                 });
 
-            if (request.IdEmprestimo.HasValue)
-            {
-                var emprestimo =
-                    await _emprestimoRepository.ObterPorIdAsync(
-                        request.IdEmprestimo.Value
-                    );
+            var movimentacoes =
+                await _movimentacaoRepository.ObterPorSalaAsync(id);
 
-                if (emprestimo == null)
-                    return BadRequest(new
-                    {
-                        mensagem = "Empréstimo não encontrado."
-                    });
-            }
+            var resultado = await MontarResultadoAsync(movimentacoes);
 
-            if (request.IdSalaOrigem.HasValue)
-            {
-                var salaOrigem = await _salaRepository.ObterPorIdAsync(
-                    request.IdSalaOrigem.Value
-                );
+            return Ok(resultado);
+        }
 
-                if (salaOrigem == null)
-                    return BadRequest(new
-                    {
-                        mensagem = "Sala de origem não encontrada."
-                    });
-            }
+        [HttpGet("usuario/{id:int}")]
+        public async Task<IActionResult> GetPorUsuario(int id)
+        {
+            var usuario = await _usuarioRepository.ObterPorIdAsync(id);
 
-            if (request.IdSalaDestino.HasValue)
-            {
-                var salaDestino = await _salaRepository.ObterPorIdAsync(
-                    request.IdSalaDestino.Value
-                );
-
-                if (salaDestino == null)
-                    return BadRequest(new
-                    {
-                        mensagem = "Sala de destino não encontrada."
-                    });
-            }
-
-            var movimentacao = new Movimentacao
-            {
-                IdProduto = request.IdProduto,
-                IdUsuario = request.IdUsuario,
-                IdEmprestimo = request.IdEmprestimo,
-                IdSalaOrigem = request.IdSalaOrigem,
-                IdSalaDestino = request.IdSalaDestino,
-                TipoMovimentacao = request.TipoMovimentacao,
-                Quantidade = request.Quantidade,
-                DataMovimentacao = DateTime.Now,
-                Descricao = request.Descricao
-            };
-
-            var novaMovimentacao =
-                await _movimentacaoRepository.AdicionarAsync(movimentacao);
-
-            return CreatedAtAction(
-                nameof(GetMovimentacao),
-                new { id = novaMovimentacao.IdMovimentacao },
-                new
+            if (usuario == null)
+                return NotFound(new
                 {
-                    novaMovimentacao.IdMovimentacao,
-                    novaMovimentacao.IdProduto,
-                    novaMovimentacao.IdUsuario,
-                    novaMovimentacao.IdEmprestimo,
-                    novaMovimentacao.IdSalaOrigem,
-                    novaMovimentacao.IdSalaDestino,
-                    novaMovimentacao.TipoMovimentacao,
-                    novaMovimentacao.Quantidade,
-                    novaMovimentacao.DataMovimentacao,
-                    novaMovimentacao.Descricao
-                }
-            );
+                    mensagem = "Usuário não encontrado."
+                });
+
+            var movimentacoes =
+                await _movimentacaoRepository.ObterPorUsuarioAsync(id);
+
+            var resultado = await MontarResultadoAsync(movimentacoes);
+
+            return Ok(resultado);
         }
     }
 }

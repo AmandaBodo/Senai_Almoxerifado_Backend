@@ -1,8 +1,9 @@
-
 namespace InventarioSENAIBackend.Dtos
 {
     public class ProdutoRequest
     {
+        public int IdUsuario { get; set; }
+
         public string Nome { get; set; } = string.Empty;
 
         public string Descricao { get; set; } = string.Empty;
@@ -17,6 +18,6 @@ namespace InventarioSENAIBackend.Dtos
 
         public string CodigoQR { get; set; } = string.Empty;
 
-        public int IdSala { get; set; }
+        public string CodigoSala { get; set; } = string.Empty;
     }
 }

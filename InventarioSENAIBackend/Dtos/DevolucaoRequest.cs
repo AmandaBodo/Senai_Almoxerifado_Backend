@@ -7,7 +7,9 @@ namespace InventarioSENAIBackend.Dtos
 
         public int IdUsuarioConferente { get; set; }
 
-        public string EstadoDevolucao { get; set; } = "Completa";
+        public int QuantidadeBoa { get; set; }
+
+        public int QuantidadeDanificada { get; set; }
 
         public bool ComponentesConferidos { get; set; }
 

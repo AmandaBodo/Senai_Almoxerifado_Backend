@@ -14,24 +14,26 @@ namespace InventarioSENAIBackend.Controllers
         private readonly UsuarioStorageRepository _usuarioRepository;
         private readonly ProdutoStorageRepository _produtoRepository;
         private readonly SalaStorageRepository _salaRepository;
+        private readonly MovimentacaoStorageRepository _movimentacaoRepository;
 
         public EmprestimosController(
             EmprestimoStorageRepository emprestimoRepository,
             UsuarioStorageRepository usuarioRepository,
             ProdutoStorageRepository produtoRepository,
-            SalaStorageRepository salaRepository)
+            SalaStorageRepository salaRepository,
+            MovimentacaoStorageRepository movimentacaoRepository)
         {
             _emprestimoRepository = emprestimoRepository;
             _usuarioRepository = usuarioRepository;
             _produtoRepository = produtoRepository;
             _salaRepository = salaRepository;
+            _movimentacaoRepository = movimentacaoRepository;
         }
 
         [HttpGet]
         public async Task<IActionResult> GetEmprestimos()
         {
             var emprestimos = await _emprestimoRepository.ObterTodosAsync();
-
             var usuarios = await _usuarioRepository.ObterTodosAsync();
             var produtos = await _produtoRepository.ObterTodosAsync();
             var salas = await _salaRepository.ObterTodasAsync();
@@ -89,7 +91,8 @@ namespace InventarioSENAIBackend.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CriarEmprestimo(EmprestimoRequest request)
+        public async Task<IActionResult> CriarEmprestimo(
+            EmprestimoRequest request)
         {
             if (request.Quantidade <= 0)
                 return BadRequest(new
@@ -150,6 +153,7 @@ namespace InventarioSENAIBackend.Controllers
                 IdSalaOrigem = request.IdSalaOrigem,
                 IdSalaDestino = request.IdSalaDestino,
                 Quantidade = request.Quantidade,
+                QuantidadeDevolvida = 0,
                 DataEmprestimo = DateTime.Now,
                 DataPrevistaDevolucao = request.DataPrevistaDevolucao,
                 Status = "Ativo"
@@ -162,6 +166,22 @@ namespace InventarioSENAIBackend.Controllers
             var novoEmprestimo = await _emprestimoRepository.AdicionarAsync(
                 emprestimo
             );
+
+            // Registro automático da movimentação
+            var movimentacao = new Movimentacao
+            {
+                IdProduto = novoEmprestimo.IdProduto,
+                IdUsuario = novoEmprestimo.IdUsuario,
+                IdEmprestimo = novoEmprestimo.IdEmprestimo,
+                IdSalaOrigem = novoEmprestimo.IdSalaOrigem,
+                IdSalaDestino = novoEmprestimo.IdSalaDestino,
+                TipoMovimentacao = "Emprestimo",
+                Quantidade = novoEmprestimo.Quantidade,
+                DataMovimentacao = DateTime.Now,
+                Descricao = "Empréstimo registrado automaticamente."
+            };
+
+            await _movimentacaoRepository.AdicionarAsync(movimentacao);
 
             novoEmprestimo.Usuario = usuario;
             novoEmprestimo.Produto = produto;

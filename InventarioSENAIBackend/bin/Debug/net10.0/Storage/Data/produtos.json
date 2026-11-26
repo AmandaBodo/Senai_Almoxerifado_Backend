@@ -1,1 +1,30 @@
-[]
+[
+  {
+    "IdProduto": 1,
+    "Nome": "Mesa",
+    "Descricao": "carteira com suporte embaixo",
+    "Categoria": "im\u00F3vel",
+    "QuantidadeTotal": 19,
+    "QuantidadeDisponivel": 3,
+    "QuantidadeDanificada": 0,
+    "EstadoConservacao": "bom",
+    "CodigoQR": "asdfg",
+    "IdSala": 2,
+    "DataCadastro": "2026-11-26T14:01:36.9517047-03:00",
+    "Sala": null
+  },
+  {
+    "IdProduto": 2,
+    "Nome": "Mouse",
+    "Descricao": "Mouse Lecoo",
+    "Categoria": "Eletronicos",
+    "QuantidadeTotal": 34,
+    "QuantidadeDisponivel": 26,
+    "QuantidadeDanificada": 6,
+    "EstadoConservacao": "Bom",
+    "CodigoQR": "123435",
+    "IdSala": 1,
+    "DataCadastro": "2026-11-26T14:37:50.6279512-03:00",
+    "Sala": null
+  }
+]

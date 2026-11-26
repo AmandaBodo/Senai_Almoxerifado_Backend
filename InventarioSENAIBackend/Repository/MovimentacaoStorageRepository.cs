@@ -1,3 +1,4 @@
+
 using InventarioSENAIBackend.Models;
 using InventarioSENAIBackend.Storage;
 
@@ -25,6 +26,39 @@ namespace InventarioSENAIBackend.Repository
             return movimentacoes.FirstOrDefault(
                 m => m.IdMovimentacao == id
             );
+        }
+
+        public async Task<List<Movimentacao>> ObterPorProdutoAsync(int idProduto)
+        {
+            var movimentacoes = await ObterTodasAsync();
+
+            return movimentacoes
+                .Where(m => m.IdProduto == idProduto)
+                .OrderByDescending(m => m.DataMovimentacao)
+                .ToList();
+        }
+
+        public async Task<List<Movimentacao>> ObterPorUsuarioAsync(int idUsuario)
+        {
+            var movimentacoes = await ObterTodasAsync();
+
+            return movimentacoes
+                .Where(m => m.IdUsuario == idUsuario)
+                .OrderByDescending(m => m.DataMovimentacao)
+                .ToList();
+        }
+
+        public async Task<List<Movimentacao>> ObterPorSalaAsync(int idSala)
+        {
+            var movimentacoes = await ObterTodasAsync();
+
+            return movimentacoes
+                .Where(m =>
+                    m.IdSalaOrigem == idSala ||
+                    m.IdSalaDestino == idSala
+                )
+                .OrderByDescending(m => m.DataMovimentacao)
+                .ToList();
         }
 
         public async Task<Movimentacao> AdicionarAsync(

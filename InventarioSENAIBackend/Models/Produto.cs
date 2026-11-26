@@ -15,6 +15,8 @@ namespace InventarioSENAIBackend.Models
 
         public int QuantidadeDisponivel { get; set; }
 
+        public int QuantidadeDanificada { get; set; }
+
         public string EstadoConservacao { get; set; } = string.Empty;
 
         public string CodigoQR { get; set; } = string.Empty;

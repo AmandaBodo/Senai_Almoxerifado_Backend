@@ -1,1 +1,53 @@
-[]
+[
+  {
+    "IdEmprestimo": 1,
+    "IdUsuario": 1,
+    "IdProduto": 1,
+    "IdSalaOrigem": 1,
+    "IdSalaDestino": 1,
+    "Quantidade": 2,
+    "QuantidadeDevolvida": 0,
+    "QuantidadePendente": 2,
+    "DataEmprestimo": "2026-11-26T14:13:59.9787664-03:00",
+    "DataPrevistaDevolucao": "2026-11-26T17:13:15.608Z",
+    "Status": "Devolvido",
+    "Usuario": null,
+    "Produto": null,
+    "SalaOrigem": null,
+    "SalaDestino": null
+  },
+  {
+    "IdEmprestimo": 2,
+    "IdUsuario": 1,
+    "IdProduto": 1,
+    "IdSalaOrigem": 1,
+    "IdSalaDestino": 1,
+    "Quantidade": 4,
+    "QuantidadeDevolvida": 0,
+    "QuantidadePendente": 4,
+    "DataEmprestimo": "2026-11-26T14:27:16.6202881-03:00",
+    "DataPrevistaDevolucao": "2026-11-26T17:24:35.117Z",
+    "Status": "Ativo",
+    "Usuario": null,
+    "Produto": null,
+    "SalaOrigem": null,
+    "SalaDestino": null
+  },
+  {
+    "IdEmprestimo": 3,
+    "IdUsuario": 1,
+    "IdProduto": 2,
+    "IdSalaOrigem": 1,
+    "IdSalaDestino": 1,
+    "Quantidade": 12,
+    "QuantidadeDevolvida": 12,
+    "QuantidadePendente": 0,
+    "DataEmprestimo": "2026-11-26T14:39:10.8973674-03:00",
+    "DataPrevistaDevolucao": "2026-11-26T17:38:14.96Z",
+    "Status": "Devolvido",
+    "Usuario": null,
+    "Produto": null,
+    "SalaOrigem": null,
+    "SalaDestino": null
+  }
+]

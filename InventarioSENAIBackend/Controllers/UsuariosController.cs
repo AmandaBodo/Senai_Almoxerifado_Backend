@@ -1,4 +1,3 @@
-
 using Microsoft.AspNetCore.Mvc;
 using InventarioSENAIBackend.Models;
 using InventarioSENAIBackend.Repository;
@@ -56,11 +55,44 @@ namespace InventarioSENAIBackend.Controllers
         [HttpPost]
         public async Task<IActionResult> PostUsuario(Usuario usuario)
         {
-            usuario.IdUsuario = 0;
+            if (string.IsNullOrWhiteSpace(usuario.Matricula))
+                return BadRequest("A matrícula é obrigatória.");
 
+            if (string.IsNullOrWhiteSpace(usuario.Email))
+                return BadRequest("O e-mail é obrigatório.");
+
+            if (string.IsNullOrWhiteSpace(usuario.SenhaHash))
+                return BadRequest("A senha é obrigatória.");
+
+            var usuarios = await _repository.ObterTodosAsync();
+
+            if (usuarios.Any(u =>
+                string.Equals(
+                    u.Matricula.Trim(),
+                    usuario.Matricula.Trim(),
+                    StringComparison.OrdinalIgnoreCase
+                )))
+            {
+                return BadRequest("Esta matrícula já está cadastrada.");
+            }
+
+            if (usuarios.Any(u =>
+                string.Equals(
+                    u.Email.Trim(),
+                    usuario.Email.Trim(),
+                    StringComparison.OrdinalIgnoreCase
+                )))
+            {
+                return BadRequest("Este e-mail já está cadastrado.");
+            }
+
+            usuario.IdUsuario = 0;
+            usuario.Matricula = usuario.Matricula.Trim();
+            usuario.Email = usuario.Email.Trim();
             usuario.SenhaHash = BCrypt.Net.BCrypt.HashPassword(
                 usuario.SenhaHash
             );
+            usuario.Status = "Ativo";
 
             var novoUsuario = await _repository.AdicionarAsync(usuario);
 
@@ -87,11 +119,40 @@ namespace InventarioSENAIBackend.Controllers
             if (usuario == null)
                 return NotFound("Usuário não encontrado.");
 
+            if (string.IsNullOrWhiteSpace(dados.Matricula))
+                return BadRequest("A matrícula é obrigatória.");
+
+            if (string.IsNullOrWhiteSpace(dados.Email))
+                return BadRequest("O e-mail é obrigatório.");
+
+            var usuarios = await _repository.ObterTodosAsync();
+
+            if (usuarios.Any(u =>
+                u.IdUsuario != id &&
+                string.Equals(
+                    u.Matricula.Trim(),
+                    dados.Matricula.Trim(),
+                    StringComparison.OrdinalIgnoreCase
+                )))
+            {
+                return BadRequest("Esta matrícula já está cadastrada por outro usuário.");
+            }
+
+            if (usuarios.Any(u =>
+                u.IdUsuario != id &&
+                string.Equals(
+                    u.Email.Trim(),
+                    dados.Email.Trim(),
+                    StringComparison.OrdinalIgnoreCase
+                )))
+            {
+                return BadRequest("Este e-mail já está cadastrado por outro usuário.");
+            }
+
             usuario.Nome = dados.Nome;
-            usuario.Matricula = dados.Matricula;
-            usuario.Email = dados.Email;
+            usuario.Matricula = dados.Matricula.Trim();
+            usuario.Email = dados.Email.Trim();
             usuario.Perfil = dados.Perfil;
-            usuario.Status = dados.Status;
 
             if (!string.IsNullOrWhiteSpace(dados.SenhaHash))
             {
@@ -118,6 +179,36 @@ namespace InventarioSENAIBackend.Controllers
             await _repository.AtualizarAsync(usuario);
 
             return NoContent();
+        }
+
+        [HttpPatch("{id}/desativar")]
+        public async Task<IActionResult> DesativarUsuario(int id)
+        {
+            var usuario = await _repository.ObterPorIdAsync(id);
+
+            if (usuario == null)
+                return NotFound("Usuário não encontrado.");
+
+            usuario.Status = "Inativo";
+
+            await _repository.AtualizarAsync(usuario);
+
+            return Ok("Usuário desativado com sucesso.");
+        }
+
+        [HttpPatch("{id}/ativar")]
+        public async Task<IActionResult> AtivarUsuario(int id)
+        {
+            var usuario = await _repository.ObterPorIdAsync(id);
+
+            if (usuario == null)
+                return NotFound("Usuário não encontrado.");
+
+            usuario.Status = "Ativo";
+
+            await _repository.AtualizarAsync(usuario);
+
+            return Ok("Usuário ativado com sucesso.");
         }
     }
 }

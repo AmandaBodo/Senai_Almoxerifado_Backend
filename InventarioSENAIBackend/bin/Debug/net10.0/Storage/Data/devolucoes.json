@@ -1,1 +1,38 @@
-[]
+[
+  {
+    "IdDevolucao": 1,
+    "IdEmprestimo": 1,
+    "IdUsuarioConferente": 1,
+    "DataDevolucao": "2026-11-26T14:15:59.0882928-03:00",
+    "QuantidadeBoa": 0,
+    "QuantidadeDanificada": 0,
+    "ComponentesConferidos": true,
+    "Observacoes": "string",
+    "Emprestimo": null,
+    "UsuarioConferente": null
+  },
+  {
+    "IdDevolucao": 2,
+    "IdEmprestimo": 3,
+    "IdUsuarioConferente": 1,
+    "DataDevolucao": "2026-11-26T14:57:55.2192935-03:00",
+    "QuantidadeBoa": 6,
+    "QuantidadeDanificada": 5,
+    "ComponentesConferidos": true,
+    "Observacoes": "string",
+    "Emprestimo": null,
+    "UsuarioConferente": null
+  },
+  {
+    "IdDevolucao": 3,
+    "IdEmprestimo": 3,
+    "IdUsuarioConferente": 1,
+    "DataDevolucao": "2026-11-26T14:58:32.9195194-03:00",
+    "QuantidadeBoa": 0,
+    "QuantidadeDanificada": 1,
+    "ComponentesConferidos": true,
+    "Observacoes": "string",
+    "Emprestimo": null,
+    "UsuarioConferente": null
+  }
+]

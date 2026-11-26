@@ -1,3 +1,4 @@
+
 namespace InventarioSENAIBackend.Models
 {
     public class Emprestimo
@@ -13,6 +14,11 @@ namespace InventarioSENAIBackend.Models
         public int IdSalaDestino { get; set; }
 
         public int Quantidade { get; set; }
+
+        public int QuantidadeDevolvida { get; set; }
+
+        public int QuantidadePendente =>
+            Quantidade - QuantidadeDevolvida;
 
         public DateTime DataEmprestimo { get; set; }
 
