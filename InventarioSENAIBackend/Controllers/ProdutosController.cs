@@ -1,8 +1,5 @@
-
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using InventarioSENAIBackend.Models;
-using InventarioSENAIBackend.Dtos;
 using InventarioSENAIBackend.Repository;
 
 namespace InventarioSENAIBackend.Controllers
@@ -11,19 +8,30 @@ namespace InventarioSENAIBackend.Controllers
     [Route("api/[controller]")]
     public class ProdutosController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly ProdutoStorageRepository _repository;
+        private readonly SalaStorageRepository _salaRepository;
 
-        public ProdutosController(AppDbContext context)
+        public ProdutosController(
+            ProdutoStorageRepository repository,
+            SalaStorageRepository salaRepository)
         {
-            _context = context;
+            _repository = repository;
+            _salaRepository = salaRepository;
         }
 
         [HttpGet]
         public async Task<IActionResult> GetProdutos()
         {
-            var produtos = await _context.Produtos
-                .Include(p => p.Sala)
-                .ToListAsync();
+            var produtos = await _repository.ObterTodosAsync();
+
+            var salas = await _salaRepository.ObterTodasAsync();
+
+            foreach (var produto in produtos)
+            {
+                produto.Sala = salas.FirstOrDefault(
+                    s => s.IdSala == produto.IdSala
+                );
+            }
 
             return Ok(produtos);
         }
@@ -31,115 +39,100 @@ namespace InventarioSENAIBackend.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetProduto(int id)
         {
-            var produto = await _context.Produtos
-                .Include(p => p.Sala)
-                .FirstOrDefaultAsync(p => p.IdProduto == id);
+            var produto = await _repository.ObterPorIdAsync(id);
 
             if (produto == null)
-                return NotFound(new { mensagem = "Produto não encontrado." });
+                return NotFound("Produto não encontrado.");
+
+            produto.Sala = await _salaRepository.ObterPorIdAsync(
+                produto.IdSala
+            );
 
             return Ok(produto);
         }
 
         [HttpPost]
-        public async Task<IActionResult> CriarProduto(ProdutoRequest request)
+        public async Task<IActionResult> PostProduto(Produto produto)
         {
-            var salaExiste = await _context.Salas
-                .AnyAsync(s => s.IdSala == request.IdSala);
+            produto.IdProduto = 0;
+            produto.Sala = null;
 
-            if (!salaExiste)
-                return BadRequest(new { mensagem = "A sala informada não existe." });
+            var sala = await _salaRepository.ObterPorIdAsync(
+                produto.IdSala
+            );
 
-            if (request.QuantidadeTotal < 0 ||
-                request.QuantidadeDisponivel < 0 ||
-                request.QuantidadeDisponivel > request.QuantidadeTotal)
+            if (sala == null)
+                return BadRequest("A sala informada não existe.");
+
+            if (produto.QuantidadeTotal < 0 ||
+                produto.QuantidadeDisponivel < 0 ||
+                produto.QuantidadeDisponivel > produto.QuantidadeTotal)
             {
-                return BadRequest(new { mensagem = "As quantidades informadas são inválidas." });
+                return BadRequest("As quantidades informadas são inválidas.");
             }
 
-            var codigoExiste = await _context.Produtos
-                .AnyAsync(p => p.CodigoQR == request.CodigoQR);
+            if (string.IsNullOrWhiteSpace(produto.CodigoQR))
+                return BadRequest("O código QR é obrigatório.");
 
-            if (codigoExiste)
-                return BadRequest(new { mensagem = "Esse código QR já está cadastrado." });
+            var produtos = await _repository.ObterTodosAsync();
 
-            var produto = new Produto
-            {
-                Nome = request.Nome,
-                Descricao = request.Descricao,
-                Categoria = request.Categoria,
-                QuantidadeTotal = request.QuantidadeTotal,
-                QuantidadeDisponivel = request.QuantidadeDisponivel,
-                EstadoConservacao = request.EstadoConservacao,
-                CodigoQR = request.CodigoQR,
-                IdSala = request.IdSala,
-                DataCadastro = DateTime.Now
-            };
+            if (produtos.Any(p => p.CodigoQR == produto.CodigoQR))
+                return BadRequest("Já existe um produto com esse código QR.");
 
-            _context.Produtos.Add(produto);
-            await _context.SaveChangesAsync();
+            if (produto.DataCadastro == default)
+                produto.DataCadastro = DateTime.Now;
+
+            var novoProduto = await _repository.AdicionarAsync(produto);
 
             return CreatedAtAction(
                 nameof(GetProduto),
-                new { id = produto.IdProduto },
-                produto
+                new { id = novoProduto.IdProduto },
+                novoProduto
             );
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> AtualizarProduto(
-            int id, ProdutoRequest request)
+        public async Task<IActionResult> PutProduto(int id, Produto dados)
         {
-            var produto = await _context.Produtos.FindAsync(id);
+            var produto = await _repository.ObterPorIdAsync(id);
 
             if (produto == null)
-                return NotFound(new { mensagem = "Produto não encontrado." });
+                return NotFound("Produto não encontrado.");
 
-            var salaExiste = await _context.Salas
-                .AnyAsync(s => s.IdSala == request.IdSala);
+            var sala = await _salaRepository.ObterPorIdAsync(
+                dados.IdSala
+            );
 
-            if (!salaExiste)
-                return BadRequest(new { mensagem = "A sala informada não existe." });
+            if (sala == null)
+                return BadRequest("A sala informada não existe.");
 
-            if (request.QuantidadeTotal < 0 ||
-                request.QuantidadeDisponivel < 0 ||
-                request.QuantidadeDisponivel > request.QuantidadeTotal)
+            if (dados.QuantidadeTotal < 0 ||
+                dados.QuantidadeDisponivel < 0 ||
+                dados.QuantidadeDisponivel > dados.QuantidadeTotal)
             {
-                return BadRequest(new { mensagem = "As quantidades informadas são inválidas." });
+                return BadRequest("As quantidades informadas são inválidas.");
             }
 
-            var codigoExiste = await _context.Produtos
-                .AnyAsync(p => p.CodigoQR == request.CodigoQR &&
-                               p.IdProduto != id);
+            var produtos = await _repository.ObterTodosAsync();
 
-            if (codigoExiste)
-                return BadRequest(new { mensagem = "Esse código QR já pertence a outro produto." });
+            if (produtos.Any(p =>
+                p.CodigoQR == dados.CodigoQR &&
+                p.IdProduto != id))
+            {
+                return BadRequest("Já existe outro produto com esse código QR.");
+            }
 
-            produto.Nome = request.Nome;
-            produto.Descricao = request.Descricao;
-            produto.Categoria = request.Categoria;
-            produto.QuantidadeTotal = request.QuantidadeTotal;
-            produto.QuantidadeDisponivel = request.QuantidadeDisponivel;
-            produto.EstadoConservacao = request.EstadoConservacao;
-            produto.CodigoQR = request.CodigoQR;
-            produto.IdSala = request.IdSala;
+            produto.Nome = dados.Nome;
+            produto.Descricao = dados.Descricao;
+            produto.Categoria = dados.Categoria;
+            produto.QuantidadeTotal = dados.QuantidadeTotal;
+            produto.QuantidadeDisponivel = dados.QuantidadeDisponivel;
+            produto.EstadoConservacao = dados.EstadoConservacao;
+            produto.CodigoQR = dados.CodigoQR;
+            produto.IdSala = dados.IdSala;
+            produto.DataCadastro = dados.DataCadastro;
 
-            await _context.SaveChangesAsync();
-
-            return Ok(produto);
-        }
-
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> ExcluirProduto(int id)
-        {
-            var produto = await _context.Produtos.FindAsync(id);
-
-            if (produto == null)
-                return NotFound(new { mensagem = "Produto não encontrado." });
-
-            _context.Produtos.Remove(produto);
-
-            await _context.SaveChangesAsync();
+            await _repository.AtualizarAsync(produto);
 
             return NoContent();
         }

@@ -1,8 +1,6 @@
 
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using InventarioSENAIBackend.Models;
-using InventarioSENAIBackend.Dtos;
 using InventarioSENAIBackend.Repository;
 
 namespace InventarioSENAIBackend.Controllers
@@ -11,17 +9,17 @@ namespace InventarioSENAIBackend.Controllers
     [Route("api/[controller]")]
     public class SalasController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly SalaStorageRepository _repository;
 
-        public SalasController(AppDbContext context)
+        public SalasController(SalaStorageRepository repository)
         {
-            _context = context;
+            _repository = repository;
         }
 
         [HttpGet]
         public async Task<IActionResult> GetSalas()
         {
-            var salas = await _context.Salas.ToListAsync();
+            var salas = await _repository.ObterTodasAsync();
 
             return Ok(salas);
         }
@@ -29,80 +27,45 @@ namespace InventarioSENAIBackend.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetSala(int id)
         {
-            var sala = await _context.Salas.FindAsync(id);
+            var sala = await _repository.ObterPorIdAsync(id);
 
             if (sala == null)
-                return NotFound(new { mensagem = "Sala não encontrada." });
+                return NotFound("Sala não encontrada.");
 
             return Ok(sala);
         }
 
         [HttpPost]
-        public async Task<IActionResult> CriarSala(SalaRequest request)
+        public async Task<IActionResult> PostSala(Sala sala)
         {
-            var codigoExiste = await _context.Salas
-                .AnyAsync(s => s.CodigoSala == request.CodigoSala);
+            sala.IdSala = 0;
 
-            if (codigoExiste)
-                return BadRequest(new { mensagem = "Esse código de sala já está cadastrado." });
-
-            var sala = new Sala
-            {
-                NomeSala = request.NomeSala,
-                CodigoSala = request.CodigoSala,
-                Descricao = request.Descricao,
-                Localizacao = request.Localizacao,
-                Status = request.Status
-            };
-
-            _context.Salas.Add(sala);
-            await _context.SaveChangesAsync();
+            var novaSala = await _repository.AdicionarAsync(sala);
 
             return CreatedAtAction(
                 nameof(GetSala),
-                new { id = sala.IdSala },
-                sala
+                new { id = novaSala.IdSala },
+                novaSala
             );
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> AtualizarSala(int id, SalaRequest request)
+        public async Task<IActionResult> PutSala(int id, Sala dados)
         {
-            var sala = await _context.Salas.FindAsync(id);
+            var sala = await _repository.ObterPorIdAsync(id);
 
             if (sala == null)
-                return NotFound(new { mensagem = "Sala não encontrada." });
+                return NotFound("Sala não encontrada.");
 
-            var codigoExiste = await _context.Salas
-                .AnyAsync(s => s.CodigoSala == request.CodigoSala && s.IdSala != id);
+            sala.NomeSala = dados.NomeSala;
+            sala.CodigoSala = dados.CodigoSala;
+            sala.Descricao = dados.Descricao;
+            sala.Localizacao = dados.Localizacao;
+            sala.Status = dados.Status;
 
-            if (codigoExiste)
-                return BadRequest(new { mensagem = "Esse código já pertence a outra sala." });
+            await _repository.AtualizarAsync(sala);
 
-            sala.NomeSala = request.NomeSala;
-            sala.CodigoSala = request.CodigoSala;
-            sala.Descricao = request.Descricao;
-            sala.Localizacao = request.Localizacao;
-            sala.Status = request.Status;
-
-            await _context.SaveChangesAsync();
-
-            return Ok(sala);
-        }
-
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> ExcluirSala(int id)
-        {
-            var sala = await _context.Salas.FindAsync(id);
-
-            if (sala == null)
-                return NotFound(new { mensagem = "Sala não encontrada." });
-
-            sala.Status = "Inativo";
-
-            await _context.SaveChangesAsync();
-
-            return Ok(new { mensagem = "Sala desativada com sucesso." });
+            return NoContent();
         }
     }
 }

@@ -1,6 +1,5 @@
 
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using InventarioSENAIBackend.Models;
 using InventarioSENAIBackend.Dtos;
 using InventarioSENAIBackend.Repository;
@@ -11,22 +10,50 @@ namespace InventarioSENAIBackend.Controllers
     [Route("api/[controller]")]
     public class EmprestimosController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly EmprestimoStorageRepository _emprestimoRepository;
+        private readonly UsuarioStorageRepository _usuarioRepository;
+        private readonly ProdutoStorageRepository _produtoRepository;
+        private readonly SalaStorageRepository _salaRepository;
 
-        public EmprestimosController(AppDbContext context)
+        public EmprestimosController(
+            EmprestimoStorageRepository emprestimoRepository,
+            UsuarioStorageRepository usuarioRepository,
+            ProdutoStorageRepository produtoRepository,
+            SalaStorageRepository salaRepository)
         {
-            _context = context;
+            _emprestimoRepository = emprestimoRepository;
+            _usuarioRepository = usuarioRepository;
+            _produtoRepository = produtoRepository;
+            _salaRepository = salaRepository;
         }
 
         [HttpGet]
         public async Task<IActionResult> GetEmprestimos()
         {
-            var emprestimos = await _context.Emprestimos
-                .Include(e => e.Usuario)
-                .Include(e => e.Produto)
-                .Include(e => e.SalaOrigem)
-                .Include(e => e.SalaDestino)
-                .ToListAsync();
+            var emprestimos = await _emprestimoRepository.ObterTodosAsync();
+
+            var usuarios = await _usuarioRepository.ObterTodosAsync();
+            var produtos = await _produtoRepository.ObterTodosAsync();
+            var salas = await _salaRepository.ObterTodasAsync();
+
+            foreach (var emprestimo in emprestimos)
+            {
+                emprestimo.Usuario = usuarios.FirstOrDefault(
+                    u => u.IdUsuario == emprestimo.IdUsuario
+                );
+
+                emprestimo.Produto = produtos.FirstOrDefault(
+                    p => p.IdProduto == emprestimo.IdProduto
+                );
+
+                emprestimo.SalaOrigem = salas.FirstOrDefault(
+                    s => s.IdSala == emprestimo.IdSalaOrigem
+                );
+
+                emprestimo.SalaDestino = salas.FirstOrDefault(
+                    s => s.IdSala == emprestimo.IdSalaDestino
+                );
+            }
 
             return Ok(emprestimos);
         }
@@ -34,15 +61,29 @@ namespace InventarioSENAIBackend.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetEmprestimo(int id)
         {
-            var emprestimo = await _context.Emprestimos
-                .Include(e => e.Usuario)
-                .Include(e => e.Produto)
-                .Include(e => e.SalaOrigem)
-                .Include(e => e.SalaDestino)
-                .FirstOrDefaultAsync(e => e.IdEmprestimo == id);
+            var emprestimo = await _emprestimoRepository.ObterPorIdAsync(id);
 
             if (emprestimo == null)
-                return NotFound(new { mensagem = "Empréstimo não encontrado." });
+                return NotFound(new
+                {
+                    mensagem = "Empréstimo não encontrado."
+                });
+
+            emprestimo.Usuario = await _usuarioRepository.ObterPorIdAsync(
+                emprestimo.IdUsuario
+            );
+
+            emprestimo.Produto = await _produtoRepository.ObterPorIdAsync(
+                emprestimo.IdProduto
+            );
+
+            emprestimo.SalaOrigem = await _salaRepository.ObterPorIdAsync(
+                emprestimo.IdSalaOrigem
+            );
+
+            emprestimo.SalaDestino = await _salaRepository.ObterPorIdAsync(
+                emprestimo.IdSalaDestino
+            );
 
             return Ok(emprestimo);
         }
@@ -51,34 +92,56 @@ namespace InventarioSENAIBackend.Controllers
         public async Task<IActionResult> CriarEmprestimo(EmprestimoRequest request)
         {
             if (request.Quantidade <= 0)
-                return BadRequest(new { mensagem = "A quantidade deve ser maior que zero." });
+                return BadRequest(new
+                {
+                    mensagem = "A quantidade deve ser maior que zero."
+                });
 
             if (request.DataPrevistaDevolucao.Date < DateTime.Today)
-                return BadRequest(new { mensagem = "A data de devolução não pode estar no passado." });
+                return BadRequest(new
+                {
+                    mensagem = "A data de devolução não pode estar no passado."
+                });
 
-            var usuario = await _context.Usuarios
-                .FirstOrDefaultAsync(u => u.IdUsuario == request.IdUsuario);
+            var usuario = await _usuarioRepository.ObterPorIdAsync(
+                request.IdUsuario
+            );
 
             if (usuario == null || usuario.Status != "Ativo")
-                return BadRequest(new { mensagem = "Usuário não encontrado ou inativo." });
+                return BadRequest(new
+                {
+                    mensagem = "Usuário não encontrado ou inativo."
+                });
 
-            var produto = await _context.Produtos
-                .FirstOrDefaultAsync(p => p.IdProduto == request.IdProduto);
+            var produto = await _produtoRepository.ObterPorIdAsync(
+                request.IdProduto
+            );
 
             if (produto == null)
-                return BadRequest(new { mensagem = "Produto não encontrado." });
+                return BadRequest(new
+                {
+                    mensagem = "Produto não encontrado."
+                });
 
             if (produto.QuantidadeDisponivel < request.Quantidade)
-                return BadRequest(new { mensagem = "Quantidade disponível insuficiente." });
+                return BadRequest(new
+                {
+                    mensagem = "Quantidade disponível insuficiente."
+                });
 
-            var salaOrigem = await _context.Salas
-                .AnyAsync(s => s.IdSala == request.IdSalaOrigem);
+            var salaOrigem = await _salaRepository.ObterPorIdAsync(
+                request.IdSalaOrigem
+            );
 
-            var salaDestino = await _context.Salas
-                .AnyAsync(s => s.IdSala == request.IdSalaDestino);
+            var salaDestino = await _salaRepository.ObterPorIdAsync(
+                request.IdSalaDestino
+            );
 
-            if (!salaOrigem || !salaDestino)
-                return BadRequest(new { mensagem = "Uma das salas informadas não existe." });
+            if (salaOrigem == null || salaDestino == null)
+                return BadRequest(new
+                {
+                    mensagem = "Uma das salas informadas não existe."
+                });
 
             var emprestimo = new Emprestimo
             {
@@ -94,14 +157,21 @@ namespace InventarioSENAIBackend.Controllers
 
             produto.QuantidadeDisponivel -= request.Quantidade;
 
-            _context.Emprestimos.Add(emprestimo);
+            await _produtoRepository.AtualizarAsync(produto);
 
-            await _context.SaveChangesAsync();
+            var novoEmprestimo = await _emprestimoRepository.AdicionarAsync(
+                emprestimo
+            );
+
+            novoEmprestimo.Usuario = usuario;
+            novoEmprestimo.Produto = produto;
+            novoEmprestimo.SalaOrigem = salaOrigem;
+            novoEmprestimo.SalaDestino = salaDestino;
 
             return CreatedAtAction(
                 nameof(GetEmprestimo),
-                new { id = emprestimo.IdEmprestimo },
-                emprestimo
+                new { id = novoEmprestimo.IdEmprestimo },
+                novoEmprestimo
             );
         }
     }

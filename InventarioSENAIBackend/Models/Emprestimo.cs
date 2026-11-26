@@ -1,4 +1,3 @@
-
 namespace InventarioSENAIBackend.Models
 {
     public class Emprestimo

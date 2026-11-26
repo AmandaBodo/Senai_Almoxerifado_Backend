@@ -1,6 +1,5 @@
 
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using InventarioSENAIBackend.Models;
 using InventarioSENAIBackend.Dtos;
 using InventarioSENAIBackend.Repository;
@@ -11,57 +10,66 @@ namespace InventarioSENAIBackend.Controllers
     [Route("api/[controller]")]
     public class DevolucoesController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly DevolucaoStorageRepository _devolucaoRepository;
+        private readonly EmprestimoStorageRepository _emprestimoRepository;
+        private readonly UsuarioStorageRepository _usuarioRepository;
+        private readonly ProdutoStorageRepository _produtoRepository;
 
-        public DevolucoesController(AppDbContext context)
+        public DevolucoesController(
+            DevolucaoStorageRepository devolucaoRepository,
+            EmprestimoStorageRepository emprestimoRepository,
+            UsuarioStorageRepository usuarioRepository,
+            ProdutoStorageRepository produtoRepository)
         {
-            _context = context;
+            _devolucaoRepository = devolucaoRepository;
+            _emprestimoRepository = emprestimoRepository;
+            _usuarioRepository = usuarioRepository;
+            _produtoRepository = produtoRepository;
         }
 
         [HttpGet]
         public async Task<IActionResult> GetDevolucoes()
         {
-            var devolucoes = await _context.Devolucoes
-                .Select(d => new
-                {
-                    d.IdDevolucao,
-                    d.IdEmprestimo,
-                    d.IdUsuarioConferente,
-                    d.DataDevolucao,
-                    d.EstadoDevolucao,
-                    d.ComponentesConferidos,
-                    d.Observacoes
-                })
-                .ToListAsync();
+            var devolucoes = await _devolucaoRepository.ObterTodasAsync();
 
-            return Ok(devolucoes);
+            return Ok(devolucoes.Select(d => new
+            {
+                d.IdDevolucao,
+                d.IdEmprestimo,
+                d.IdUsuarioConferente,
+                d.DataDevolucao,
+                d.EstadoDevolucao,
+                d.ComponentesConferidos,
+                d.Observacoes
+            }));
         }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetDevolucao(int id)
         {
-            var devolucao = await _context.Devolucoes
-                .Where(d => d.IdDevolucao == id)
-                .Select(d => new
-                {
-                    d.IdDevolucao,
-                    d.IdEmprestimo,
-                    d.IdUsuarioConferente,
-                    d.DataDevolucao,
-                    d.EstadoDevolucao,
-                    d.ComponentesConferidos,
-                    d.Observacoes
-                })
-                .FirstOrDefaultAsync();
+            var devolucao = await _devolucaoRepository.ObterPorIdAsync(id);
 
             if (devolucao == null)
-                return NotFound(new { mensagem = "Devolução não encontrada." });
+                return NotFound(new
+                {
+                    mensagem = "Devolução não encontrada."
+                });
 
-            return Ok(devolucao);
+            return Ok(new
+            {
+                devolucao.IdDevolucao,
+                devolucao.IdEmprestimo,
+                devolucao.IdUsuarioConferente,
+                devolucao.DataDevolucao,
+                devolucao.EstadoDevolucao,
+                devolucao.ComponentesConferidos,
+                devolucao.Observacoes
+            });
         }
 
         [HttpPost]
-        public async Task<IActionResult> CriarDevolucao(DevolucaoRequest request)
+        public async Task<IActionResult> CriarDevolucao(
+            DevolucaoRequest request)
         {
             var estadosValidos = new[]
             {
@@ -71,23 +79,46 @@ namespace InventarioSENAIBackend.Controllers
             };
 
             if (!estadosValidos.Contains(request.EstadoDevolucao))
-                return BadRequest(new { mensagem = "Estado de devolução inválido." });
+                return BadRequest(new
+                {
+                    mensagem = "Estado de devolução inválido."
+                });
 
-            var emprestimo = await _context.Emprestimos
-                .Include(e => e.Produto)
-                .FirstOrDefaultAsync(e => e.IdEmprestimo == request.IdEmprestimo);
+            var emprestimo = await _emprestimoRepository.ObterPorIdAsync(
+                request.IdEmprestimo
+            );
 
             if (emprestimo == null)
-                return NotFound(new { mensagem = "Empréstimo não encontrado." });
+                return NotFound(new
+                {
+                    mensagem = "Empréstimo não encontrado."
+                });
 
             if (emprestimo.Status == "Devolvido")
-                return BadRequest(new { mensagem = "Esse empréstimo já foi devolvido." });
+                return BadRequest(new
+                {
+                    mensagem = "Esse empréstimo já foi devolvido."
+                });
 
-            var usuario = await _context.Usuarios
-                .FirstOrDefaultAsync(u => u.IdUsuario == request.IdUsuarioConferente);
+            var usuario = await _usuarioRepository.ObterPorIdAsync(
+                request.IdUsuarioConferente
+            );
 
             if (usuario == null || usuario.Status != "Ativo")
-                return BadRequest(new { mensagem = "Usuário conferente não encontrado ou inativo." });
+                return BadRequest(new
+                {
+                    mensagem = "Usuário conferente não encontrado ou inativo."
+                });
+
+            var produto = await _produtoRepository.ObterPorIdAsync(
+                emprestimo.IdProduto
+            );
+
+            if (produto == null)
+                return BadRequest(new
+                {
+                    mensagem = "Produto associado ao empréstimo não encontrado."
+                });
 
             var devolucao = new Devolucao
             {
@@ -103,24 +134,29 @@ namespace InventarioSENAIBackend.Controllers
 
             if (request.EstadoDevolucao == "Completa")
             {
-                emprestimo.Produto.QuantidadeDisponivel += emprestimo.Quantidade;
+                produto.QuantidadeDisponivel += emprestimo.Quantidade;
+
+                await _produtoRepository.AtualizarAsync(produto);
             }
 
-            _context.Devolucoes.Add(devolucao);
+            await _emprestimoRepository.AtualizarAsync(emprestimo);
 
-            await _context.SaveChangesAsync();
+            var novaDevolucao = await _devolucaoRepository.AdicionarAsync(
+                devolucao
+            );
 
             return CreatedAtAction(
                 nameof(GetDevolucao),
-                new { id = devolucao.IdDevolucao },
+                new { id = novaDevolucao.IdDevolucao },
                 new
                 {
-                    devolucao.IdDevolucao,
-                    devolucao.IdEmprestimo,
-                    devolucao.DataDevolucao,
-                    devolucao.EstadoDevolucao,
-                    devolucao.ComponentesConferidos,
-                    devolucao.Observacoes
+                    novaDevolucao.IdDevolucao,
+                    novaDevolucao.IdEmprestimo,
+                    novaDevolucao.IdUsuarioConferente,
+                    novaDevolucao.DataDevolucao,
+                    novaDevolucao.EstadoDevolucao,
+                    novaDevolucao.ComponentesConferidos,
+                    novaDevolucao.Observacoes
                 }
             );
         }

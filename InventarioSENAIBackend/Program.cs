@@ -1,17 +1,30 @@
+
+using InventarioSENAIBackend.Repository;
+using InventarioSENAIBackend.Storage;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-
 builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+
+builder.Services.AddScoped<StorageService>();
+
+builder.Services.AddScoped<UsuarioStorageRepository>();
+builder.Services.AddScoped<SalaStorageRepository>();
+builder.Services.AddScoped<ProdutoStorageRepository>();
+builder.Services.AddScoped<EmprestimoStorageRepository>();
+builder.Services.AddScoped<DevolucaoStorageRepository>();
+builder.Services.AddScoped<MovimentacaoStorageRepository>();
+
 builder.Services.AddOpenApi();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();

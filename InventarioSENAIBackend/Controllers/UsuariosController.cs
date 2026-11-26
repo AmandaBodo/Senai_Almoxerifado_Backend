@@ -1,6 +1,5 @@
 
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using InventarioSENAIBackend.Models;
 using InventarioSENAIBackend.Repository;
 
@@ -10,63 +9,40 @@ namespace InventarioSENAIBackend.Controllers
     [Route("api/[controller]")]
     public class UsuariosController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly UsuarioStorageRepository _repository;
 
-        public UsuariosController(AppDbContext context)
+        public UsuariosController(UsuarioStorageRepository repository)
         {
-            _context = context;
+            _repository = repository;
         }
 
         [HttpGet]
         public async Task<IActionResult> GetUsuarios()
         {
-            var usuarios = await _context.Usuarios
-                .Select(u => new
-                {
-                    u.IdUsuario,
-                    u.Nome,
-                    u.Matricula,
-                    u.Email,
-                    u.Perfil,
-                    u.Status
-                })
-                .ToListAsync();
+            var usuarios = await _repository.ObterTodosAsync();
 
-            return Ok(usuarios);
+            var resultado = usuarios.Select(u => new
+            {
+                u.IdUsuario,
+                u.Nome,
+                u.Matricula,
+                u.Email,
+                u.Perfil,
+                u.Status
+            });
+
+            return Ok(resultado);
         }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetUsuario(int id)
         {
-            var usuario = await _context.Usuarios
-                .Where(u => u.IdUsuario == id)
-                .Select(u => new
-                {
-                    u.IdUsuario,
-                    u.Nome,
-                    u.Matricula,
-                    u.Email,
-                    u.Perfil,
-                    u.Status
-                })
-                .FirstOrDefaultAsync();
+            var usuario = await _repository.ObterPorIdAsync(id);
 
             if (usuario == null)
                 return NotFound("Usuário não encontrado.");
 
-            return Ok(usuario);
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> PostUsuario(Usuario usuario)
-        {
-            usuario.IdUsuario = 0;
-            usuario.SenhaHash = BCrypt.Net.BCrypt.HashPassword(usuario.SenhaHash);
-
-            _context.Usuarios.Add(usuario);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetUsuario), new { id = usuario.IdUsuario }, new
+            return Ok(new
             {
                 usuario.IdUsuario,
                 usuario.Nome,
@@ -77,10 +53,36 @@ namespace InventarioSENAIBackend.Controllers
             });
         }
 
+        [HttpPost]
+        public async Task<IActionResult> PostUsuario(Usuario usuario)
+        {
+            usuario.IdUsuario = 0;
+
+            usuario.SenhaHash = BCrypt.Net.BCrypt.HashPassword(
+                usuario.SenhaHash
+            );
+
+            var novoUsuario = await _repository.AdicionarAsync(usuario);
+
+            return CreatedAtAction(
+                nameof(GetUsuario),
+                new { id = novoUsuario.IdUsuario },
+                new
+                {
+                    novoUsuario.IdUsuario,
+                    novoUsuario.Nome,
+                    novoUsuario.Matricula,
+                    novoUsuario.Email,
+                    novoUsuario.Perfil,
+                    novoUsuario.Status
+                }
+            );
+        }
+
         [HttpPut("{id}")]
         public async Task<IActionResult> PutUsuario(int id, Usuario dados)
         {
-            var usuario = await _context.Usuarios.FindAsync(id);
+            var usuario = await _repository.ObterPorIdAsync(id);
 
             if (usuario == null)
                 return NotFound("Usuário não encontrado.");
@@ -92,9 +94,13 @@ namespace InventarioSENAIBackend.Controllers
             usuario.Status = dados.Status;
 
             if (!string.IsNullOrWhiteSpace(dados.SenhaHash))
-                usuario.SenhaHash = BCrypt.Net.BCrypt.HashPassword(dados.SenhaHash);
+            {
+                usuario.SenhaHash = BCrypt.Net.BCrypt.HashPassword(
+                    dados.SenhaHash
+                );
+            }
 
-            await _context.SaveChangesAsync();
+            await _repository.AtualizarAsync(usuario);
 
             return NoContent();
         }
@@ -102,14 +108,14 @@ namespace InventarioSENAIBackend.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUsuario(int id)
         {
-            var usuario = await _context.Usuarios.FindAsync(id);
+            var usuario = await _repository.ObterPorIdAsync(id);
 
             if (usuario == null)
                 return NotFound("Usuário não encontrado.");
 
             usuario.Status = "Inativo";
 
-            await _context.SaveChangesAsync();
+            await _repository.AtualizarAsync(usuario);
 
             return NoContent();
         }
